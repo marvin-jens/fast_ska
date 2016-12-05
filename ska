@@ -10,8 +10,8 @@ import numpy as np
 import copy
 import time
 import os
-import cPickle as pickle
 import logging
+import ska_kmers
  
 def read_freqs(src):
     """
@@ -34,9 +34,8 @@ def read_freqs(src):
 def stream_counts(k, seqm, num_iterations=10, convergence=0.5, background = []):
     logger = logging.getLogger("stream_counts()")
     kmers = list(yield_kmers(k))
-    from rsek import kmer
     t0 = time.time()
-    kmer_counts = kmer.seq_set_kmer_count(seqm,k)
+    kmer_counts = ska_kmers.seq_set_kmer_count(seqm,k)
     t1 = time.time()
     logger.debug("counted kmer occurrences in {0:.1f} seconds".format( (t1-t0) ) )
 
@@ -51,7 +50,7 @@ def stream_counts(k, seqm, num_iterations=10, convergence=0.5, background = []):
 
     weight_history = []
     for iteration_i in range(num_iterations):
-        new_weights = kmer.seq_set_SKA(seqm, current_weights, background, k)
+        new_weights = ska_kmers.seq_set_SKA(seqm, current_weights, background, k)
             
         weight_history.append(new_weights)
         current_weights = copy.copy(new_weights)
@@ -91,7 +90,8 @@ def main():
 
     if options.version:
         print __version__
-        print __licence__
+        print __license__
+        print "by", ", ".join(__authors__)
         sys.exit(0)
 
     # prepare outout path
@@ -121,11 +121,10 @@ def main():
         parser.error("missing argument: need <reads_file> (or use /dev/stdin)")
         sys.exit(1)
 
-    from rsek import kmer
     t0 = time.time()
     # load and keep all sequences in memory (numerically A=0,...T=3 )
     #seqm = kmer.read_raw_seqs_C(args[0])
-    seqm = kmer.read_raw_seqs_chunked(file(args[0]), chunklines=2000000)
+    seqm = ska_kmers.read_raw_seqs_chunked(file(args[0]), chunklines=2000000)
     t1 = time.time()
     logger.info("read {0:.3f}M sequences of length {1} in {2:.1f} seconds".format(len(seqm)/1E6, len(seqm[0]), (t1-t0) ) )
 
