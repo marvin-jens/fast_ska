@@ -1,3 +1,13 @@
+__license__ = "MIT"
+__version__ = "0.9"
+__authors__ = ["Marvin Jens"]
+__email__ = "mjens@mit.edu"
+
+"""
+A fast Cython implementation of the "Streaming K-mer Assignment" 
+algorithm initially described in Lambert et al. 2014 (PMID: 24837674)
+"""
+
 from cython.parallel import parallel, prange
 import numpy as np
 cimport numpy as np
