@@ -1,9 +1,31 @@
-from distutils.core import setup
-from Cython.Build import cythonize
+from setuptools import setup
+from setuptools.extension import Extension
+
+try:
+    from Cython.Distutils import build_ext
+    from Cython.Build import cythonize
+except ImportError:
+    use_cython = False
+else:
+    use_cython = True
+
+cmdclass = { }
+ext_modules = [ ]
+
+if use_cython:
+    ext_modules += [
+        Extension("ska_kmers", [ "ska_kmers.pyx" ]),
+    ]
+    cmdclass.update({ 'build_ext': build_ext })
+else:
+    ext_modules += [
+        Extension("ska_kmers", [ "ska_kmers.c" ]),
+    ]
+
 
 setup(
     name = "fast_ska",
-    version = "0.9.2",
+    version = "0.9.3",
     description='A fast Cython implementation of the "Streaming K-mer Assignment" algorithm initially described in Lambert et al. 2014 (PMID: 24837674)',
     url = 'https://github.com/marvin-jens/fast_ska',
     author = 'Marvin Jens',
@@ -32,7 +54,10 @@ setup(
     ],
     keywords = 'rna rbns k-mer kmer statistics biology bioinformatics',
 
-    requires=['cython','numpy'],
+    install_requires=['cython','numpy'],
     scripts=['ska'],
-    ext_modules = cythonize("ska_kmers.pyx")
+    cmdclass = cmdclass,
+    ext_modules=ext_modules,
+
+    #ext_modules = cythonize("ska_kmers.pyx")
 )
