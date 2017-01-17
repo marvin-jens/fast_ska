@@ -199,7 +199,7 @@ def read_fastq(src, str pre="", str post="", UINT32_t n_max=0, UINT32_t n_skip=0
     return np.array(seqs)
             
 
-@cython.boundscheck(True)
+@cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.initializedcheck(False)
 @cython.overflowcheck(False)
@@ -207,12 +207,11 @@ def read_fastq(src, str pre="", str post="", UINT32_t n_max=0, UINT32_t n_skip=0
 cdef inline UINT32_t kbits_to_index(UINT8_t [:] kbits, UINT32_t k):
     cdef UINT32_t i, index = 0
     
-    #assert kbits.dtype == np.uint8
-    
     for i in range(k):
         index += kbits[i] << 2 * (k - i - 1)
     
     return index
+
 
 def seq_to_index(seq):
     k = len(seq)
@@ -275,7 +274,7 @@ def seq_set_kmer_count(np.ndarray[UINT8_t, ndim=2] seq_matrix, UINT32_t k):
 
 
 
-@cython.boundscheck(True)
+@cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.initializedcheck(False)
 @cython.cdivision(True)
@@ -304,29 +303,35 @@ def seq_set_SKA(np.ndarray[UINT8_t, ndim=2] seq_matrix, np.ndarray[FLOAT32_t] _w
     # a MemoryView into each sequence (already converted 
     # from letters to bits)
     cdef UINT8_t [::1] _seq_matrix = seq_matrix.flatten()
-    cdef UINT8_t [::1] seq_bits
     
     # helper variables to tell cython the types
     cdef UINT8_t s
-    cdef UINT32_t index, i, j
-    cdef FLOAT32_t w, total_w
+    cdef int index, i, j, ofs
+    cdef FLOAT32_t w=0, total_w=0, current_weights_sum = 0, weights_sum = MAX_INDEX+1, Z=0
     
+    current_weights_sum = _weights.sum()
+    Z = weights_sum / current_weights_sum
+    
+    #with nogil, parallel(num_threads=8):
+        #for j in prange(N):
     for j in range(N):
-        seq_bits = _seq_matrix[j*L:(j+1)*L]
+        ofs = j*L
 
         # compute index of first k-1 mer by bit-shifts
-        index = kbits_to_index(seq_bits, k-1)
+        index = 0
+        for i in range(k-1):
+            index += _seq_matrix[ofs+i] << 2 * (k - i - 2)
         
         total_w = 0
         
         # iterate over k-mers
         for i in range(0, L-k+1):
             # get next "letter"
-            s = seq_bits[i+k-1]
+            s = _seq_matrix[ofs+i+k-1]
             # compute next index from previous by shift + next letter
             index = ((index << 2) | s ) & MAX_INDEX
             mer_indices[i] = index
-            w = weights[index] / background[index]
+            w = weights[index] / background[index] * Z
             mer_weights[i] = w
             total_w += w
 
@@ -334,9 +339,11 @@ def seq_set_SKA(np.ndarray[UINT8_t, ndim=2] seq_matrix, np.ndarray[FLOAT32_t] _w
         for i in range(0, L-k+1):
             weights[mer_indices[i]] += mer_weights[i]/total_w
 
+        current_weights_sum += 1
+        Z = weights_sum / current_weights_sum
+
     # normalize such that all weights sum up to 4**k
-    w = (MAX_INDEX+1)/_weights.sum()
-    _weights *= w
+    _weights *= Z
     return _weights
 
 
