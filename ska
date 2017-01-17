@@ -55,10 +55,6 @@ class SKARun(object):
         self.input_run = input_run
         self.out_path = os.path.abspath(out_path)
         
-        # prepare outout path
-        if not os.path.exists(self.out_path):
-            os.makedirs(self.out_path)
-
 
     def stream_counts(self, k):
         self.logger.info("streaming {0}-mers".format(k))
@@ -92,7 +88,7 @@ class SKARun(object):
                 max_i = change.argmax()
                 max_change = change[max_i]
                 
-                self.logger.info("#iteration {0}: mean_change={1} max_change={2} for '{3}' ({4} -> {5})".format(iteration_i, mean_change, max_change, kmers[max_i], weight_history[-2][max_i], weight_history[-1][max_i]))
+                self.logger.info("iteration {0}: mean_change={1} max_change={2} for '{3}' ({4} -> {5})".format(iteration_i, mean_change, max_change, kmers[max_i], weight_history[-2][max_i], weight_history[-1][max_i]))
                 if max_change < self.convergence:
                     self.logger.info("reached convergence after {0} iterations".format(iteration_i))
                     break
@@ -110,8 +106,8 @@ class SKARun(object):
         
         return background
 
-    def run(self, min_k, max_k):
 
+    def run(self, min_k, max_k):
         for k in range(min_k, max_k+1):
             SKA_weights, kmer_freqs = self.stream_counts(k)
             
@@ -180,6 +176,10 @@ def main():
     if not args:
         parser.error("missing argument: need <reads_file> (or use /dev/stdin)")
         sys.exit(1)
+
+    # prepare outout path
+    if not os.path.exists(options.output):
+        os.makedirs(options.output)
 
     # set up logging
     log_path = os.path.join(options.output,"run.log")
